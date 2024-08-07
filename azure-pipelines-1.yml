@@ -1,27 +1,76 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
 - main
 
-pool:
-  vmImage: ubuntu-latest
+variables:
+  imageRepository: 'nginx'
+  tag: 'latest'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+stages:
+- stage: Deploy
+  displayName: Deploy NGINX to AKS
+  jobs:
+  - job: Deploy
+    displayName: Deploy to AKS
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: Kubernetes@1
+      displayName: 'Deploy NGINX to AKS'
+      inputs:
+        connectionType: 'Kubernetes Service Connection'
+        namespace: 'default'
+        manifests: |
+          $(Pipeline.Workspace)/k8s/deployment.yml
+          $(Pipeline.Workspace)/k8s/service.yml
+        command: 'apply'
+        arguments: '--force'
+        kubernetesServiceConnection: kubernetesServiceConnection
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+    - task: Kubernetes@1
+      displayName: 'Create Deployment'
+      inputs:
+        connectionType: 'Kubernetes Service Connection'
+        namespace: 'default'
+        manifests: |
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: nginx-deployment
+            labels:
+              app: nginx
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: nginx
+            template:
+              metadata:
+                labels:
+                  app: nginx
+              spec:
+                containers:
+                - name: nginx
+                  image: nginx:latest
+                  ports:
+                  - containerPort: 80
+        kubernetesServiceConnection: kubernetesServiceConnection
 
-- task: KubernetesManifest@1
-  inputs:
-    action: 'deploy'
-    connectionType: 'kubernetesServiceConnection'
-    kubernetesServiceConnection: 'kubernetesServiceConnection'
-    namespace: 'default'
-    containers: 'nginx'
+    - task: Kubernetes@1
+      displayName: 'Create Service'
+      inputs:
+        connectionType: 'Kubernetes Service Connection'
+        namespace: 'default'
+        manifests: |
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: nginx-service
+          spec:
+            selector:
+              app: nginx
+            ports:
+              - protocol: TCP
+                port: 80
+                targetPort: 80
+            type: LoadBalancer
+        kubernetesServiceConnection: kubernetesServiceConnection
