@@ -21,7 +21,7 @@ stages:
         namespace: '$(namespace)'
         command: 'apply'
         useConfigurationFile: false
-        arguments: '-f -'
+        arguments: '-f - --v=8'
         configuration: |
           apiVersion: apps/v1
           kind: Deployment
@@ -52,7 +52,7 @@ stages:
         namespace: '$(namespace)'
         command: 'apply'
         useConfigurationFile: false
-        arguments: '-f -'
+        arguments: '-f - --v=8'
         configuration: |
           apiVersion: v1
           kind: Service
