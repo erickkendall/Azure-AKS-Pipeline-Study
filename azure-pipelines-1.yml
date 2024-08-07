@@ -15,19 +15,7 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
     - task: Kubernetes@1
-      displayName: 'Deploy NGINX to AKS'
-      inputs:
-        connectionType: 'Kubernetes Service Connection'
-        namespace: 'default'
-        manifests: |
-          $(Pipeline.Workspace)/k8s/deployment.yml
-          $(Pipeline.Workspace)/k8s/service.yml
-        command: 'apply'
-        arguments: '--force'
-        kubernetesServiceConnection: kubernetesServiceConnection
-
-    - task: Kubernetes@1
-      displayName: 'Create Deployment'
+      displayName: 'Create Deployment and Service'
       inputs:
         connectionType: 'Kubernetes Service Connection'
         namespace: 'default'
@@ -53,14 +41,7 @@ stages:
                   image: nginx:latest
                   ports:
                   - containerPort: 80
-        kubernetesServiceConnection: kubernetesServiceConnection
-
-    - task: Kubernetes@1
-      displayName: 'Create Service'
-      inputs:
-        connectionType: 'Kubernetes Service Connection'
-        namespace: 'default'
-        manifests: |
+          ---
           apiVersion: v1
           kind: Service
           metadata:
