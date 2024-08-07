@@ -11,8 +11,8 @@ variables:
 stages:
 - stage: Deploy
   jobs:
-  - job: DeployBusybox
-    displayName: 'Deploy Busybox to AKS'
+  - job: DeployNGINX
+    displayName: 'Deploy NGINX to AKS'
     steps:
     - task: Kubernetes@1
       inputs:
@@ -21,30 +21,29 @@ stages:
         namespace: '$(namespace)'
         command: 'apply'
         useConfigurationFile: false
-        arguments: |
-          -f -
-        secretType: 'none'
+        arguments: '-f -'
         configuration: |
           apiVersion: apps/v1
           kind: Deployment
           metadata:
-            name: busybox-deployment
+            name: nginx-deployment
             labels:
-              app: busybox
+              app: nginx
           spec:
-            replicas: 1
+            replicas: 2
             selector:
               matchLabels:
-                app: busybox
+                app: nginx
             template:
               metadata:
                 labels:
-                  app: busybox
+                  app: nginx
               spec:
                 containers:
-                - name: busybox
-                  image: busybox
-                  command: ["sleep", "3600"]
+                - name: nginx
+                  image: nginx:latest
+                  ports:
+                  - containerPort: 80
 
     - task: Kubernetes@1
       inputs:
@@ -53,22 +52,17 @@ stages:
         namespace: '$(namespace)'
         command: 'apply'
         useConfigurationFile: false
-        arguments: |
-          -f -
-        secretType: 'none'
+        arguments: '-f -'
         configuration: |
           apiVersion: v1
           kind: Service
           metadata:
-            name: busybox-service
+            name: nginx-service
             labels:
-              app: busybox
+              app: nginx
           spec:
             selector:
-              app: busybox
+              app: nginx
             ports:
             - protocol: TCP
-              port: 80
-              targetPort: 80
-            type: LoadBalancer
-
+        
