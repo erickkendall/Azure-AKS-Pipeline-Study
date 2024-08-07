@@ -1,19 +1,74 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 trigger:
 - main
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+variables:
+  kubernetesServiceConnection: 'kubernetesServiceConnection'  # Replace with your service connection name
+  namespace: 'default'  # Or another namespace if you prefer
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+stages:
+- stage: Deploy
+  jobs:
+  - job: DeployBusybox
+    displayName: 'Deploy Busybox to AKS'
+    steps:
+    - task: Kubernetes@1
+      inputs:
+        connectionType: 'Kubernetes Service Connection'
+        kubernetesServiceEndpoint: '$(kubernetesServiceConnection)'
+        namespace: '$(namespace)'
+        command: 'apply'
+        useConfigurationFile: false
+        arguments: |
+          -f -
+        secretType: 'none'
+        configuration: |
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: busybox-deployment
+            labels:
+              app: busybox
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: busybox
+            template:
+              metadata:
+                labels:
+                  app: busybox
+              spec:
+                containers:
+                - name: busybox
+                  image: busybox
+                  command: ["sleep", "3600"]
+
+    - task: Kubernetes@1
+      inputs:
+        connectionType: 'Kubernetes Service Connection'
+        kubernetesServiceEndpoint: '$(kubernetesServiceConnection)'
+        namespace: '$(namespace)'
+        command: 'apply'
+        useConfigurationFile: false
+        arguments: |
+          -f -
+        secretType: 'none'
+        configuration: |
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: busybox-service
+            labels:
+              app: busybox
+          spec:
+            selector:
+              app: busybox
+            ports:
+            - protocol: TCP
+              port: 80
+              targetPort: 80
+            type: LoadBalancer
+
