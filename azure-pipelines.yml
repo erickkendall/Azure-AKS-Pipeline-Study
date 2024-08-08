@@ -1,68 +1,22 @@
-trigger:
-- main
-
-pool:
-  vmImage: 'ubuntu-latest'
-
-variables:
-  kubernetesServiceConnection: 'kubernetesServiceConnection'  # Replace with your service connection name
-  namespace: 'default'  # Or another namespace if you prefer
-
-stages:
-- stage: Deploy
-  jobs:
-  - job: DeployNGINX
-    displayName: 'Deploy NGINX to AKS'
+- stage: Build
+  displayName: Build stage
+  jobs:  
+  - job: Build
+    displayName: Build job
+    pool:
+      vmImage: $(vmImageName)
     steps:
-    - task: Kubernetes@1
+    - task: Docker@2
+      displayName: Build and push an image to container registry
       inputs:
-        connectionType: 'Kubernetes Service Connection'
-        kubernetesServiceEndpoint: '$(kubernetesServiceConnection)'
-        namespace: '$(namespace)'
-        command: 'apply'
-        useConfigurationFile: false
-        arguments: '-f - --v=8'
-        configuration: |
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: nginx-deployment
-            labels:
-              app: nginx
-          spec:
-            replicas: 2
-            selector:
-              matchLabels:
-                app: nginx
-            template:
-              metadata:
-                labels:
-                  app: nginx
-              spec:
-                containers:
-                - name: nginx
-                  image: nginx:latest
-                  ports:
-                  - containerPort: 80
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
 
-    - task: Kubernetes@1
+    - task: PublishPipelineArtifact@1
       inputs:
-        connectionType: 'Kubernetes Service Connection'
-        kubernetesServiceEndpoint: '$(kubernetesServiceConnection)'
-        namespace: '$(namespace)'
-        command: 'apply'
-        useConfigurationFile: false
-        arguments: '-f - --v=8'
-        configuration: |
-          apiVersion: v1
-          kind: Service
-          metadata:
-            name: nginx-service
-            labels:
-              app: nginx
-          spec:
-            selector:
-              app: nginx
-            ports:
-            - protocol: TCP
-        
+        artifactName: 'manifests'
+        path: 'manifests'
